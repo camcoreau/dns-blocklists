@@ -1,13 +1,11 @@
 name: Check CamCore DNS source health
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "camcore/sources.json"
-      - "camcore/tools/check_sources.py"
-      - ".github/workflows/camcore-source-health.yml"
+  workflow_run:
+    workflows:
+      - "Publish CamCore DNS blocklist"
+    types:
+      - completed
   schedule:
     - cron: "23 18 * * 0"
   workflow_dispatch:
@@ -21,6 +19,7 @@ concurrency:
 
 jobs:
   check:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     name: Check approved production sources
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -39,5 +38,5 @@ jobs:
       - name: Validate repository policy
         run: python camcore/tools/validate_repository.py
 
-      - name: Check active source health
+      - name: Check published production feed
         run: python camcore/tools/check_sources.py
