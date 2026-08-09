@@ -1,0 +1,4 @@
+# CamCore DNS Blocklist
+# Stable Pi-hole feed: https://raw.githubusercontent.com/camcoreau/dns-blocklists/main/blocklist.txt
+# Generated from the approved production source by CamCore automation.
+# This placeholder is replaced automatically after the publishing workflow is merged.
