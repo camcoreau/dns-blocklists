@@ -1,0 +1,70 @@
+name: Validate CamCore DNS policy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".editorconfig"
+      - ".gitattributes"
+      - ".gitignore"
+      - "README.md"
+      - "NOTICE.md"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
+      - "docs/**"
+      - "camcore/**"
+      - ".github/CODEOWNERS"
+      - ".github/dependabot.yml"
+      - ".github/pull_request_template.md"
+      - ".github/ISSUE_TEMPLATE/config.yml"
+      - ".github/workflows/camcore-validate.yml"
+      - ".github/workflows/camcore-source-health.yml"
+  pull_request:
+    paths:
+      - ".editorconfig"
+      - ".gitattributes"
+      - ".gitignore"
+      - "README.md"
+      - "NOTICE.md"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
+      - "docs/**"
+      - "camcore/**"
+      - ".github/CODEOWNERS"
+      - ".github/dependabot.yml"
+      - ".github/pull_request_template.md"
+      - ".github/ISSUE_TEMPLATE/config.yml"
+      - ".github/workflows/camcore-validate.yml"
+      - ".github/workflows/camcore-source-health.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: camcore-dns-validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate policy, local lists and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Run unit tests
+        run: python -m unittest discover -s camcore/tests -v
+
+      - name: Validate CamCore DNS repository
+        run: python camcore/tools/validate_repository.py

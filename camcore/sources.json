@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "name": "CamCore DNS filtering baseline",
+    "mode": "minimal",
+    "production_change_requires_review": true,
+    "source_failure_behaviour": "retain-last-known-good"
+  },
+  "sources": [
+    {
+      "id": "stevenblack-unified-hosts",
+      "name": "StevenBlack Unified Hosts",
+      "status": "active",
+      "deployment": "production",
+      "format": "hosts",
+      "url": "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+      "upstream_repository": "https://github.com/StevenBlack/hosts",
+      "purpose": "Baseline advertising, tracking and malicious-domain filtering",
+      "licence": "MIT"
+    },
+    {
+      "id": "hagezi-multi-normal",
+      "name": "HaGeZi Multi NORMAL",
+      "status": "under-review",
+      "deployment": "evaluation",
+      "format": "adblock",
+      "url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/multi.txt",
+      "upstream_repository": "https://github.com/hagezi/dns-blocklists",
+      "purpose": "Controlled evaluation only; not approved for CamCore production resolvers",
+      "licence": "GPL-3.0"
+    }
+  ]
+}

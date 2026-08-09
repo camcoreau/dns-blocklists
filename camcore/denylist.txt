@@ -1,0 +1,3 @@
+# CamCore DNS deny-list
+# One reviewed, exact lower-case domain per line.
+# Empty by design until a specific security or operational requirement is approved.
