@@ -15,23 +15,24 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 REQUIRED_FILES = (
     ".editorconfig", ".gitattributes", ".gitignore", "README.md", "NOTICE.md",
-    "CONTRIBUTING.md", "SECURITY.md", "LICENSE", "docs/OPERATIONS.md",
-    "docs/REPOSITORY-SETTINGS.md", "docs/UPSTREAM.md", "camcore/README.md",
-    "camcore/sources.json", "camcore/allowlist.txt", "camcore/denylist.txt",
-    "camcore/tools/validate_repository.py", "camcore/tools/check_sources.py",
+    "CONTRIBUTING.md", "SECURITY.md", "LICENSE", "blocklist.txt",
+    "docs/OPERATIONS.md", "docs/REPOSITORY-SETTINGS.md", "docs/UPSTREAM.md",
+    "camcore/README.md", "camcore/sources.json", "camcore/allowlist.txt",
+    "camcore/denylist.txt", "camcore/tools/validate_repository.py",
+    "camcore/tools/check_sources.py", "camcore/tools/publish_blocklist.py",
     "camcore/tests/test_validate_repository.py", "camcore/tests/test_check_sources.py",
     ".github/CODEOWNERS", ".github/dependabot.yml",
     ".github/pull_request_template.md", ".github/ISSUE_TEMPLATE/config.yml",
     ".github/workflows/camcore-validate.yml",
     ".github/workflows/camcore-source-health.yml",
+    ".github/workflows/camcore-publish.yml",
 )
 FORBIDDEN_DEFAULT_BRANCH_PATHS = (
     "adblock", "adguard", "controld", "dnsmasq", "ips", "rpz", "share",
     "wildcard", "sources.md", ".github/workflows/release.yml",
     ".github/workflows/alreadyincluded.yml", ".github/workflows/deaddomain.yml",
     ".github/workflows/fixed-pending-release.yml", ".github/workflows/ignored.yml",
-    ".github/workflows/malicious-scam-phishing.yml",
-    ".github/workflows/notworthit.yml",
+    ".github/workflows/malicious-scam-phishing.yml", ".github/workflows/notworthit.yml",
     ".github/ISSUE_TEMPLATE/allowlist-request.yml",
     ".github/ISSUE_TEMPLATE/denylist-request.yml",
     ".github/ISSUE_TEMPLATE/miscellaneous.yml",
@@ -40,17 +41,19 @@ WORKFLOW_PATHS = (
     Path(".github/workflows/camcore-validate.yml"),
     Path(".github/workflows/camcore-source-health.yml"),
 )
+PUBLISH_WORKFLOW = Path(".github/workflows/camcore-publish.yml")
 CANONICAL_DESCRIPTION = (
     "CamCore is a privately owned and operated family technology network that "
     "delivers secure, reliable and professionally managed digital services for "
     "the Cameron household, Cameron-Media and associated family operations."
 )
 APPROVED_PRODUCTION_SOURCES = {
-    "stevenblack-unified-hosts": {
-        "format": "hosts",
-        "url": "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
-        "upstream_repository": "https://github.com/StevenBlack/hosts",
-        "licence": "MIT",
+    "camcore-hagezi-multi-normal": {
+        "format": "domains",
+        "url": "https://raw.githubusercontent.com/camcoreau/dns-blocklists/main/blocklist.txt",
+        "upstream_url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/multi.txt",
+        "upstream_repository": "https://github.com/hagezi/dns-blocklists",
+        "licence": "GPL-3.0",
     }
 }
 STATUS_DEPLOYMENT = {
@@ -79,7 +82,6 @@ SECRET_PATTERNS = (
 
 
 def is_valid_domain(value: str) -> bool:
-    """Return whether value is one exact lower-case domain name."""
     if not value or value != value.strip() or value != value.lower():
         return False
     if len(value) > 253 or value.startswith(".") or value.endswith("."):
@@ -156,14 +158,14 @@ def validate_manifest(path: Path) -> list[str]:
     if data.get("schema_version") != 1:
         errors.append(f"{path}: schema_version must be 1")
     policy = data.get("policy")
+    expected_policy = {
+        "mode": "minimal",
+        "production_change_requires_review": True,
+        "source_failure_behaviour": "retain-last-known-good",
+    }
     if not isinstance(policy, dict):
         errors.append(f"{path}: policy must be an object")
     else:
-        expected_policy = {
-            "mode": "minimal",
-            "production_change_requires_review": True,
-            "source_failure_behaviour": "retain-last-known-good",
-        }
         for key, expected in expected_policy.items():
             if policy.get(key) != expected:
                 errors.append(f"{path}: policy.{key} must be {expected!r}")
@@ -201,15 +203,14 @@ def validate_manifest(path: Path) -> list[str]:
         if status not in STATUS_DEPLOYMENT:
             errors.append(f"{label}: invalid status: {status!r}")
         elif deployment != STATUS_DEPLOYMENT[status]:
-            errors.append(
-                f"{label}: status {status!r} requires deployment "
-                f"{STATUS_DEPLOYMENT[status]!r}"
-            )
+            errors.append(f"{label}: status {status!r} requires deployment {STATUS_DEPLOYMENT[status]!r}")
         if source.get("format") not in {"hosts", "adblock", "domains"}:
             errors.append(f"{label}: invalid format: {source.get('format')!r}")
         source_url = source.get("url")
         errors.extend(validate_public_https_url(source_url, f"{label}: url"))
         errors.extend(validate_public_https_url(source.get("upstream_repository"), f"{label}: upstream_repository"))
+        if "upstream_url" in source:
+            errors.extend(validate_public_https_url(source.get("upstream_url"), f"{label}: upstream_url"))
         if isinstance(source_url, str):
             if source_url in urls:
                 errors.append(f"{label}: duplicate source URL: {source_url}")
@@ -222,10 +223,7 @@ def validate_manifest(path: Path) -> list[str]:
 
     expected_ids = set(APPROVED_PRODUCTION_SOURCES)
     if set(production) != expected_ids:
-        errors.append(
-            f"{path}: production source IDs must be exactly {sorted(expected_ids)}, "
-            f"found {sorted(production)}"
-        )
+        errors.append(f"{path}: production source IDs must be exactly {sorted(expected_ids)}, found {sorted(production)}")
     for source_id, expected in APPROVED_PRODUCTION_SOURCES.items():
         source = production.get(source_id)
         if source:
@@ -237,11 +235,17 @@ def validate_manifest(path: Path) -> list[str]:
     return errors
 
 
-def repository_text_files(root: Path):
-    for path in sorted(root.rglob("*")):
-        if path.is_file() and ".git" not in path.parts and "__pycache__" not in path.parts:
-            if path.suffix.lower() in TEXT_SUFFIXES or path.name in {"LICENSE", "CODEOWNERS"}:
-                yield path
+def _validate_action_pins(relative: Path, text: str) -> list[str]:
+    errors: list[str] = []
+    if "actions/checkout@" in text and "persist-credentials: false" not in text:
+        errors.append(f"{relative}: checkout credentials must not persist")
+    references = ACTION_REF_RE.findall(text)
+    if not references:
+        errors.append(f"{relative}: expected at least one pinned GitHub Action")
+    for reference in references:
+        if not re.fullmatch(r"[0-9a-f]{40}", reference):
+            errors.append(f"{relative}: action reference {reference!r} must be pinned to a 40-character commit SHA")
+    return errors
 
 
 def validate_workflow_security(root: Path) -> list[str]:
@@ -257,17 +261,19 @@ def validate_workflow_security(root: Path) -> list[str]:
             errors.append(f"{relative}: workflow permissions must remain read-only")
         if "permissions:\n  contents: read" not in text:
             errors.append(f"{relative}: must declare top-level contents: read permissions")
-        if "actions/checkout@" in text and "persist-credentials: false" not in text:
-            errors.append(f"{relative}: checkout credentials must not persist")
-        references = ACTION_REF_RE.findall(text)
-        if not references:
-            errors.append(f"{relative}: expected at least one pinned GitHub Action")
-        for reference in references:
-            if not re.fullmatch(r"[0-9a-f]{40}", reference):
-                errors.append(
-                    f"{relative}: action reference {reference!r} must be pinned to a "
-                    "40-character commit SHA"
-                )
+        errors.extend(_validate_action_pins(relative, text))
+
+    publish = root / PUBLISH_WORKFLOW
+    if publish.is_file():
+        text = publish.read_text(encoding="utf-8")
+        if "pull_request:" in text or "pull_request_target:" in text:
+            errors.append(f"{PUBLISH_WORKFLOW}: publisher must never run from pull-request events")
+        if "permissions:\n  contents: write" not in text:
+            errors.append(f"{PUBLISH_WORKFLOW}: publisher must declare only contents: write")
+        unexpected_writes = [m.group(0) for m in WRITE_PERMISSION_RE.finditer(text) if "contents:" not in m.group(0).lower()]
+        if unexpected_writes:
+            errors.append(f"{PUBLISH_WORKFLOW}: publisher grants unexpected write permissions")
+        errors.extend(_validate_action_pins(PUBLISH_WORKFLOW, text))
     return errors
 
 
@@ -275,19 +281,18 @@ def validate_required_content(root: Path) -> list[str]:
     errors = [f"Missing required file: {path}" for path in REQUIRED_FILES if not (root / path).is_file()]
     errors.extend(
         f"Forbidden upstream path on CamCore default branch: {path}"
-        for path in FORBIDDEN_DEFAULT_BRANCH_PATHS
-        if (root / path).exists()
+        for path in FORBIDDEN_DEFAULT_BRANCH_PATHS if (root / path).exists()
     )
     phrase_checks = {
         "README.md": (
-            CANONICAL_DESCRIPTION, "StevenBlack Unified Hosts", "Under review",
-            "upstream-hagezi", "minimal",
+            CANONICAL_DESCRIPTION, "CamCore DNS Blocklist", "HaGeZi Multi NORMAL",
+            "blocklist.txt", "upstream-hagezi", "minimal",
         ),
         "docs/UPSTREAM.md": (
             "hagezi/dns-blocklists", "GPL-3.0", "does not claim authorship",
             "upstream-hagezi", "must not be merged into `main`",
         ),
-        "NOTICE.md": ("HaGeZi", "upstream-hagezi", "StevenBlack/hosts", "MIT licence"),
+        "NOTICE.md": ("HaGeZi", "upstream-hagezi"),
     }
     for relative, phrases in phrase_checks.items():
         path = root / relative
@@ -302,6 +307,13 @@ def validate_required_content(root: Path) -> list[str]:
         if "GNU GENERAL PUBLIC LICENSE" not in text or "Version 3" not in text:
             errors.append("LICENSE: expected the GNU General Public License version 3")
     return errors
+
+
+def repository_text_files(root: Path):
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and ".git" not in path.parts and "__pycache__" not in path.parts:
+            if path.suffix.lower() in TEXT_SUFFIXES or path.name in {"LICENSE", "CODEOWNERS"}:
+                yield path
 
 
 def validate_text_and_secrets(root: Path) -> list[str]:
@@ -362,8 +374,7 @@ def main() -> int:
     manifest = json.loads((REPO_ROOT / "camcore/sources.json").read_text(encoding="utf-8"))
     active = sum(
         source.get("status") == "active" and source.get("deployment") == "production"
-        for source in manifest["sources"]
-        if isinstance(source, dict)
+        for source in manifest["sources"] if isinstance(source, dict)
     )
     print(
         "CamCore DNS repository validation passed: "

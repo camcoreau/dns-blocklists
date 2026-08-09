@@ -1,0 +1,85 @@
+name: Publish CamCore DNS blocklist
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "camcore/sources.json"
+      - "camcore/allowlist.txt"
+      - "camcore/denylist.txt"
+      - "camcore/tools/publish_blocklist.py"
+      - ".github/workflows/camcore-publish.yml"
+  schedule:
+    - cron: "45 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: camcore-dns-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish production feed
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Validate repository policy
+        run: python camcore/tools/validate_repository.py
+
+      - name: Build CamCore blocklist
+        run: python camcore/tools/publish_blocklist.py
+
+      - name: Publish changed blocklist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- blocklist.txt; then
+            echo "Published blocklist is already current."
+            exit 0
+          fi
+
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/blocklist.txt?ref=main" --jq '.sha')"
+          export CURRENT_SHA="${current_sha}"
+
+          python - <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "message": "chore(dns): refresh published blocklist",
+              "content": base64.b64encode(Path("blocklist.txt").read_bytes()).decode("ascii"),
+              "sha": os.environ["CURRENT_SHA"],
+              "branch": "main",
+          }
+          Path("/tmp/camcore-blocklist-payload.json").write_text(
+              json.dumps(payload), encoding="utf-8"
+          )
+          PY
+
+          gh api \
+            --method PUT \
+            "repos/${GITHUB_REPOSITORY}/contents/blocklist.txt" \
+            --input /tmp/camcore-blocklist-payload.json \
+            > /dev/null
+
+          echo "Published updated CamCore blocklist."

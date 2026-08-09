@@ -8,26 +8,27 @@
   },
   "sources": [
     {
-      "id": "stevenblack-unified-hosts",
-      "name": "StevenBlack Unified Hosts",
+      "id": "camcore-hagezi-multi-normal",
+      "name": "CamCore DNS Blocklist - HaGeZi Multi NORMAL",
       "status": "active",
       "deployment": "production",
+      "format": "domains",
+      "url": "https://raw.githubusercontent.com/camcoreau/dns-blocklists/main/blocklist.txt",
+      "upstream_url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/multi.txt",
+      "upstream_repository": "https://github.com/hagezi/dns-blocklists",
+      "purpose": "CamCore-owned production feed generated from HaGeZi Multi NORMAL with CamCore local allow and deny policy applied",
+      "licence": "GPL-3.0"
+    },
+    {
+      "id": "stevenblack-unified-hosts",
+      "name": "StevenBlack Unified Hosts",
+      "status": "retired",
+      "deployment": "retired",
       "format": "hosts",
       "url": "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
       "upstream_repository": "https://github.com/StevenBlack/hosts",
-      "purpose": "Baseline advertising, tracking and malicious-domain filtering",
+      "purpose": "Previous CamCore production baseline retained for change history and rollback reference",
       "licence": "MIT"
-    },
-    {
-      "id": "hagezi-multi-normal",
-      "name": "HaGeZi Multi NORMAL",
-      "status": "under-review",
-      "deployment": "evaluation",
-      "format": "adblock",
-      "url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/multi.txt",
-      "upstream_repository": "https://github.com/hagezi/dns-blocklists",
-      "purpose": "Controlled evaluation only; not approved for CamCore production resolvers",
-      "licence": "GPL-3.0"
     }
   ]
 }

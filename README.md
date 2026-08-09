@@ -1,138 +1,129 @@
 # CamCore DNS Blocklists
 
 [![Validate CamCore DNS policy](https://github.com/camcoreau/dns-blocklists/actions/workflows/camcore-validate.yml/badge.svg)](https://github.com/camcoreau/dns-blocklists/actions/workflows/camcore-validate.yml)
+[![Publish CamCore DNS blocklist](https://github.com/camcoreau/dns-blocklists/actions/workflows/camcore-publish.yml/badge.svg)](https://github.com/camcoreau/dns-blocklists/actions/workflows/camcore-publish.yml)
 [![Source health](https://github.com/camcoreau/dns-blocklists/actions/workflows/camcore-source-health.yml/badge.svg)](https://github.com/camcoreau/dns-blocklists/actions/workflows/camcore-source-health.yml)
 [![Licence: GPL-3.0](https://img.shields.io/badge/licence-GPL--3.0-blue.svg)](LICENSE)
 
-Controlled DNS filtering policy, local exception lists and upstream source governance for **CamCore – Cameron Family Secure Network**.
+Controlled DNS filtering policy, production feed publishing and upstream source governance for **CamCore – Cameron Family Secure Network**.
 
 > **CamCore is a privately owned and operated family technology network that delivers secure, reliable and professionally managed digital services for the Cameron household, Cameron-Media and associated family operations.**
 
 **Built for Home. Engineered Like Enterprise.**
 
-> [!IMPORTANT]
-> **Production baseline:** CamCore resolvers use the single approved **StevenBlack Unified Hosts** source.
->
-> HaGeZi is retained only as an **Under review** evaluation source. The original fork snapshot is isolated on the `upstream-hagezi` branch and is not CamCore production configuration.
+## CamCore production feed
 
-## Purpose
+CamCore-managed Pi-hole resolvers should use this single stable URL:
 
-This repository provides one reviewable location for:
+```text
+https://raw.githubusercontent.com/camcoreau/dns-blocklists/main/blocklist.txt
+```
 
-- The approved CamCore DNS filtering source manifest.
-- Deliberate local allow-list and deny-list entries.
-- Offline validation and read-only source-health checks.
-- DNS change, deployment and rollback procedures.
-- Clear upstream attribution and fork-maintenance boundaries.
+The published **CamCore DNS Blocklist** is generated from **HaGeZi Multi NORMAL** and then processed through CamCore policy before publication.
 
-It does not replace the live Pi-hole configuration, resolver backups, CamCore Operations change records or approved documentation in CamCore Documentation.
+The publisher:
+
+- Downloads the approved HaGeZi Multi NORMAL domains feed over HTTPS.
+- Rejects malformed or unexpectedly small upstream data.
+- Removes domains in `camcore/allowlist.txt`.
+- Adds domains in `camcore/denylist.txt`.
+- Protects CamCore-owned and local resolver namespaces from accidental publication.
+- Normalises, deduplicates and sorts the final domain list.
+- Publishes only a successfully validated result to `blocklist.txt`.
+- Leaves the last-known-good `blocklist.txt` untouched if generation fails.
+
+Pi-hole therefore consumes a CamCore-owned URL rather than an upstream URL directly.
 
 ## Current standard
 
 | Component | State | Production use |
 | --- | --- | --- |
-| StevenBlack Unified Hosts | **Active** | Approved baseline source |
-| CamCore local allow-list | **Active** | Empty unless a documented exception is required |
-| CamCore local deny-list | **Active** | Empty unless a specific security or operational requirement is approved |
-| HaGeZi Multi NORMAL | **Under review** | Evaluation only; not deployed |
-| Additional third-party lists | **Not approved** | Require evidence, testing and rollback planning |
+| CamCore DNS Blocklist | **Active** | Single approved Pi-hole production feed |
+| HaGeZi Multi NORMAL | **Active upstream** | Source material for the CamCore feed |
+| CamCore local allow-list | **Active** | Removed from the generated feed |
+| CamCore local deny-list | **Active** | Added to the generated feed |
+| StevenBlack Unified Hosts | **Retired** | Historical baseline and rollback reference only |
+| Additional third-party lists | **Not approved** | Require evidence, testing and change control |
 
-CamCore intentionally keeps DNS filtering minimal. Adding more lists is not automatically an improvement: larger combinations can break legitimate applications, increase false positives and make troubleshooting harder.
+CamCore intentionally keeps DNS filtering **minimal**: one published production feed, one controlled source pipeline and one place to manage exceptions.
 
 ## Source of truth
 
 The machine-readable policy is stored in [`camcore/sources.json`](camcore/sources.json).
 
-CamCore-owned local entries are stored in:
+CamCore-owned local policy is stored in:
 
 - [`camcore/allowlist.txt`](camcore/allowlist.txt)
 - [`camcore/denylist.txt`](camcore/denylist.txt)
 
-Only exact, lower-case domain names are accepted. URLs, IP addresses, wildcards, hosts-file rows and comments appended to an entry are rejected by automated validation.
+The Pi-hole consumable output is [`blocklist.txt`](blocklist.txt). Do not edit it manually; it is generated by the publisher.
+
+## Automation
+
+### Validate CamCore DNS policy
+
+Runs on every push to and pull request targeting `main`. It validates repository structure, production-source identity, local domain syntax, workflow security, source URLs, attribution and common secret patterns.
+
+### Publish CamCore DNS blocklist
+
+Runs when production source or local policy changes, can be run manually, and refreshes daily. This is the repository's only intentionally write-capable workflow. Its permission is limited to repository contents so it can replace `blocklist.txt` after a successful build.
+
+### Check CamCore DNS source health
+
+Runs after successful publishing and on its scheduled health check. It confirms that the public CamCore production URL is reachable and contains plausible domain data.
 
 ## Repository structure
 
 | Path or branch | Purpose | Authority |
 | --- | --- | --- |
-| `main` | Small CamCore governance and curation layer | Authoritative repository state |
-| `camcore/` | Source manifest, local lists, tests and tools | Authoritative DNS policy |
-| `docs/` | Operations, repository settings and upstream governance | Authoritative procedures |
-| `.github/workflows/camcore-*` | Read-only validation and source-health automation | Approved automation only |
+| `main` | CamCore governance, publishing and production feed | Authoritative repository state |
+| `blocklist.txt` | Stable Pi-hole feed | Production consumable |
+| `camcore/` | Source manifest, local policy, tools and tests | Authoritative DNS policy |
+| `docs/` | Operations and upstream governance | Authoritative procedures |
+| `.github/workflows/camcore-*` | CamCore validation, publishing and health automation | Approved automation |
 | `upstream-hagezi` | Historical HaGeZi fork snapshot | Provenance and controlled reference only |
 
-Do not deploy a list merely because it exists in the archive branch or an upstream repository. Production resolvers should consume only active production records in `camcore/sources.json` and reviewed local exceptions.
+The `upstream-hagezi` branch must not be deployed to Pi-hole and must not be merged into `main`.
+
+## Pi-hole deployment
+
+Deploy changes one resolver at a time. Add only the CamCore production URL:
+
+```text
+https://raw.githubusercontent.com/camcoreau/dns-blocklists/main/blocklist.txt
+```
+
+Then rebuild Gravity and validate normal internet access, Microsoft 365, NetBird, CamCore services and commonly used household applications before applying the same change to the second resolver.
+
+Do not simultaneously subscribe Pi-hole to the CamCore feed and its HaGeZi upstream source; that provides no additional coverage and makes troubleshooting less clear.
 
 ## Change control
 
-Every production DNS filtering change should:
+Every production DNS change should:
 
-1. State the problem or security requirement being addressed.
-2. Identify the exact source or domain entry being proposed.
-3. Confirm that the issue was investigated before creating an allow-list exception.
-4. Assess impact on internet access, Microsoft 365, NetBird and CamCore services.
-5. Include a backup and rollback method.
-6. Pass repository validation.
-7. Be tested on one resolver before both resolvers are changed.
-8. Be verified on both resolvers after deployment.
-9. Be recorded in CamCore Operations when operationally significant.
+1. State the reason for the change.
+2. Identify the exact source or local domain entry affected.
+3. Assess impact on Microsoft 365, NetBird, CamCore services and household applications.
+4. Pass repository validation.
+5. Be published successfully.
+6. Be tested on one resolver first.
+7. Include a rollback path.
+8. Be recorded in CamCore Operations when operationally significant.
 
 Detailed procedures are in [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
-## Automated validation
-
-The `Validate CamCore DNS policy` workflow checks:
-
-- Required governance and operational files.
-- The exact approved production-source identity and endpoint.
-- Unique source identifiers and valid HTTPS source URLs.
-- Allowed source and deployment states.
-- Domain syntax, normalisation, sorting and duplicates.
-- Conflicts between the local allow-list and deny-list.
-- Protection of CamCore-owned namespaces from accidental local blocking.
-- Removal of inherited write-enabled upstream automation from `main`.
-- Read-only workflow permissions and commit-SHA-pinned actions.
-- Common secret and private-key patterns in CamCore-owned files.
-- Unit tests for the validator and source parser.
-
-Run locally from the repository root:
-
-```sh
-python camcore/tools/validate_repository.py
-python -m unittest discover -s camcore/tests -v
-```
-
-The separate source-health workflow confirms that each approved production source is reachable and contains plausible data. It does not publish, mirror or silently replace blocklists.
-
-## Deployment
-
-This repository is a configuration and governance source of truth. Production resolvers should consume only the active source entries approved in `camcore/sources.json`, together with reviewed local exceptions.
-
-Never make an unrecorded bulk list change on both resolvers at once. Follow the staged deployment, verification and rollback process in [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
-
 ## Security and privacy
 
-This repository is public. Do not commit:
-
-- Passwords, API tokens, credentials or private keys.
-- Resolver exports, backups, query logs or client data.
-- Internal IP addresses or sensitive host inventories.
-- Personal browsing history or screenshots containing private information.
-- Unreviewed domain dumps copied from live systems.
+This repository is public. Never commit credentials, resolver backups, DNS query logs, private browsing information, internal inventories or other sensitive operational data.
 
 Security reporting instructions are in [`SECURITY.md`](SECURITY.md).
 
 ## Upstream attribution
 
-This repository originated as a fork of [HaGeZi DNS Blocklists](https://github.com/hagezi/dns-blocklists). The inherited snapshot is preserved on `upstream-hagezi`; its original material and licence remain the work of HaGeZi and its contributors.
+This repository originated as a fork of [HaGeZi DNS Blocklists](https://github.com/hagezi/dns-blocklists). HaGeZi Multi NORMAL remains upstream work distributed under its applicable GPL-3.0 terms. CamCore's generated production feed applies CamCore policy to that upstream source and does not claim authorship of HaGeZi material.
 
-CamCore does not claim authorship of that material, does not provide upstream support for it and does not treat the archive branch as production approval. See [`NOTICE.md`](NOTICE.md) and [`docs/UPSTREAM.md`](docs/UPSTREAM.md).
+The inherited snapshot is preserved on `upstream-hagezi` for provenance and controlled reference. See [`NOTICE.md`](NOTICE.md) and [`docs/UPSTREAM.md`](docs/UPSTREAM.md).
 
 ## Support
 
-For a CamCore DNS issue or approved change request, use the [CamCore Support page](https://camcore.au/support.html) or email `help@camcore.au`.
-
-False positives or source errors within HaGeZi or StevenBlack material should first be confirmed and then reported to the relevant upstream project using its published process.
-
-## Ownership
-
-This repository is maintained as part of the private CamCore Network. Significant production changes should be reviewed, tested and recorded through CamCore Operations.
+For a CamCore DNS issue or approved change request, use CamCore Support or email `help@camcore.au`.
