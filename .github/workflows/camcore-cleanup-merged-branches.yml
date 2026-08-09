@@ -1,0 +1,53 @@
+name: Remove merged CamCore maintenance branches
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/camcore-cleanup-merged-branches.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: camcore-dns-one-time-branch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Remove known merged branches
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Delete known merged branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          branches=(
+            "chore/camcore-standard"
+            "fix/required-validation-trigger"
+            "maintenance/cleanup-merged-branches"
+          )
+
+          for branch in "${branches[@]}"; do
+            error_file="$(mktemp)"
+            if gh api \
+              --method DELETE \
+              "repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch}" \
+              > /dev/null 2> "${error_file}"; then
+              echo "Deleted ${branch}"
+            elif grep -qi "not found\|HTTP 404" "${error_file}"; then
+              echo "Already absent: ${branch}"
+            else
+              cat "${error_file}" >&2
+              rm -f "${error_file}"
+              exit 1
+            fi
+            rm -f "${error_file}"
+          done
