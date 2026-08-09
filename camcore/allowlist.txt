@@ -1,0 +1,3 @@
+# CamCore DNS allow-list
+# One reviewed, exact lower-case domain per line.
+# Empty by design until a documented exception is required.
