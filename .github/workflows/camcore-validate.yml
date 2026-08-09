@@ -4,39 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - ".editorconfig"
-      - ".gitattributes"
-      - ".gitignore"
-      - "README.md"
-      - "NOTICE.md"
-      - "CONTRIBUTING.md"
-      - "SECURITY.md"
-      - "docs/**"
-      - "camcore/**"
-      - ".github/CODEOWNERS"
-      - ".github/dependabot.yml"
-      - ".github/pull_request_template.md"
-      - ".github/ISSUE_TEMPLATE/config.yml"
-      - ".github/workflows/camcore-validate.yml"
-      - ".github/workflows/camcore-source-health.yml"
   pull_request:
-    paths:
-      - ".editorconfig"
-      - ".gitattributes"
-      - ".gitignore"
-      - "README.md"
-      - "NOTICE.md"
-      - "CONTRIBUTING.md"
-      - "SECURITY.md"
-      - "docs/**"
-      - "camcore/**"
-      - ".github/CODEOWNERS"
-      - ".github/dependabot.yml"
-      - ".github/pull_request_template.md"
-      - ".github/ISSUE_TEMPLATE/config.yml"
-      - ".github/workflows/camcore-validate.yml"
-      - ".github/workflows/camcore-source-health.yml"
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
