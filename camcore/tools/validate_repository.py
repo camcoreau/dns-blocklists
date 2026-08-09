@@ -51,7 +51,6 @@ APPROVED_PRODUCTION_SOURCES = {
     "camcore-hagezi-multi-normal": {
         "format": "domains",
         "url": "https://raw.githubusercontent.com/camcoreau/dns-blocklists/main/blocklist.txt",
-        "upstream_url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/multi-onlydomains.txt",
         "upstream_repository": "https://github.com/hagezi/dns-blocklists",
         "licence": "GPL-3.0",
     }
