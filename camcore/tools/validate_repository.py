@@ -51,7 +51,7 @@ APPROVED_PRODUCTION_SOURCES = {
     "camcore-hagezi-multi-normal": {
         "format": "domains",
         "url": "https://raw.githubusercontent.com/camcoreau/dns-blocklists/main/blocklist.txt",
-        "upstream_url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/multi.txt",
+        "upstream_url": "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/multi-onlydomains.txt",
         "upstream_repository": "https://github.com/hagezi/dns-blocklists",
         "licence": "GPL-3.0",
     }
@@ -71,7 +71,6 @@ WRITE_PERMISSION_RE = re.compile(
     r"packages|pages|pull-requests|repository-projects|security-events|statuses):"
     r"\s*write\s*(?:#.*)?$"
 )
-TEXT_SUFFIXES = {"", ".md", ".txt", ".json", ".py", ".yml", ".yaml"}
 SECRET_PATTERNS = (
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     re.compile(
@@ -79,6 +78,7 @@ SECRET_PATTERNS = (
         r"[ \t]*[:=][ \t]*[\"']?[A-Za-z0-9_./+=:-]{12,}"
     ),
 )
+TEXT_SUFFIXES = {"", ".md", ".txt", ".json", ".py", ".yml", ".yaml"}
 
 
 def is_valid_domain(value: str) -> bool:
@@ -90,10 +90,9 @@ def is_valid_domain(value: str) -> bool:
         return False
     try:
         ipaddress.ip_address(value)
+        return False
     except ValueError:
         pass
-    else:
-        return False
     labels = value.split(".")
     return len(labels) >= 2 and all(DOMAIN_LABEL_RE.fullmatch(label) for label in labels)
 
