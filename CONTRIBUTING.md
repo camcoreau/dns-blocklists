@@ -1,66 +1,98 @@
 # Contributing to CamCore DNS Blocklists
 
-This repository is publicly visible because it is a fork, but its CamCore-owned policy is maintained for the private CamCore Network.
+This repository contains the DNS filtering policy and publishing controls used by **CamCore – Cameron Family Secure Network**.
 
-> **CamCore is a privately owned and operated family technology network that delivers secure, reliable and professionally managed digital services for the Cameron household, Cameron-Media and associated family operations.**
+CamCore accepts changes only when they solve a specific, evidenced operational or security requirement. The objective is not to maximise the number of blocked domains; it is to maintain a stable, explainable and low-risk DNS filtering baseline.
 
 ## Before proposing a change
 
-A proposed DNS change must solve a specific, evidenced problem. Do not add a large list simply to increase the blocked-domain count.
+Every production-facing change should identify:
 
-For a local allow-list entry:
+- the problem being solved;
+- the exact source or domain affected;
+- supporting evidence;
+- expected user and service impact;
+- false-positive risk;
+- validation steps; and
+- a rollback method.
 
-1. Reproduce the failure.
-2. Confirm DNS filtering is the cause.
+Do not add an additional blocklist simply to increase coverage statistics. New upstream sources require separate evaluation and explicit production approval.
+
+## Allow-list changes
+
+Before adding an entry to `camcore/allowlist.txt`:
+
+1. Reproduce the affected service or application failure.
+2. Confirm CamCore DNS filtering is the cause.
 3. Identify the smallest exact domain required.
-4. Check whether the problem belongs upstream.
-5. Document the impact of allowing the domain.
+4. Determine whether the problem should be corrected upstream instead.
+5. Assess the privacy or security effect of allowing the domain.
+6. Test the exception on one resolver before wider deployment.
 
-For a local deny-list entry:
+Broad parent-domain exceptions should be avoided unless the full domain scope is deliberately required and reviewed.
 
-1. Identify the security or operational requirement.
-2. Provide evidence that the exact domain should be blocked.
-3. Check for legitimate use and likely false positives.
-4. Prefer an authoritative upstream source when appropriate.
-5. Document rollback and validation steps.
+## Deny-list changes
+
+Before adding an entry to `camcore/denylist.txt`:
+
+1. Identify the security, privacy or operational requirement.
+2. Confirm the exact domain and supporting evidence.
+3. Check for legitimate or shared-hosting use.
+4. Determine whether the entry belongs in the approved upstream source instead.
+5. Assess likely false positives and user impact.
+6. Test the change on one resolver before wider deployment.
 
 ## File rules
 
 Entries in `camcore/allowlist.txt` and `camcore/denylist.txt` must be:
 
-- One exact domain per line.
-- Lower-case.
-- Written without a scheme, path, port or wildcard.
-- Sorted in ascending lexical order.
-- Unique within the file.
-- Supported by a comment in the pull request, not an inline trailing comment.
+- one exact domain per line;
+- lower-case;
+- written without a scheme, path, port or trailing dot;
+- free of wildcards, regular expressions, hosts-file rows and Adblock syntax;
+- sorted in ascending lexical order;
+- unique within the file; and
+- supported by evidence in the change record rather than a trailing inline comment.
 
 Blank lines and full-line comments beginning with `#` are permitted.
 
-## Required checks
+## Required validation
 
 Run:
 
 ```sh
-python camcore/tools/validate_repository.py
 python -m unittest discover -s camcore/tests -v
+python camcore/tools/validate_repository.py
 ```
 
-A production-facing pull request should also include:
+The same controls run automatically through the CamCore validation workflow for changes targeting `main`.
 
-- The reason and evidence for the change.
-- Expected user and service impact.
-- The resolver used for staged testing.
-- Verification results.
-- A rollback method.
-- The matching CamCore Operations record when required.
+## Production change record
+
+A production-facing pull request should include:
+
+- reason and evidence for the change;
+- exact policy or source affected;
+- expected service and user impact;
+- resolver used for staged validation;
+- verification results;
+- rollback method; and
+- the matching CamCore Operations record when operationally significant.
+
+See [`docs/OPERATIONS.md`](docs/OPERATIONS.md) for staged deployment and rollback requirements.
 
 ## Upstream content
 
-Do not edit inherited HaGeZi generated files to create a CamCore exception. Report upstream defects to the upstream project and keep CamCore-specific entries under `camcore/`.
+Do not directly edit inherited HaGeZi material to create a CamCore-specific exception.
 
-Do not remove attribution, source headers or licence information from inherited material.
+CamCore production policy belongs in the files under `camcore/`. Upstream defects should be confirmed and reported through the upstream project's published process where appropriate.
 
-## Security
+Do not remove attribution, source references or licence information from third-party material.
 
-Never include credentials, private keys, resolver exports, query logs, client information, internal IP inventories or personal browsing data in an issue, commit or pull request.
+See [`docs/UPSTREAM.md`](docs/UPSTREAM.md) for the full upstream governance model.
+
+## Security and privacy
+
+Never include credentials, private keys, tokens, resolver exports, DNS query logs, browsing information, client details, private infrastructure inventories or other sensitive operational data in an issue, commit or pull request.
+
+Security reporting instructions are in [`SECURITY.md`](SECURITY.md).
