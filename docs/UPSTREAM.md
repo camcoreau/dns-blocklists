@@ -10,7 +10,7 @@ The production source of truth is [`camcore/sources.json`](../camcore/sources.js
 
 `camcoreau/dns-blocklists` originated as a GitHub fork of [`hagezi/dns-blocklists`](https://github.com/hagezi/dns-blocklists).
 
-HaGeZi and its contributors retain authorship of their upstream generated lists, source documentation and other original material. CamCore retains the applicable upstream licence and does not claim authorship of HaGeZi content.
+HaGeZi and its contributors retain authorship of their upstream generated lists, source documentation and other original material. CamCore retains the applicable upstream licence and does not claim authorship of HaGeZi content. The inherited HaGeZi material remains subject to **GPL-3.0** and its applicable upstream attribution requirements.
 
 ## Current production relationship
 
