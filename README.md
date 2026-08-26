@@ -27,7 +27,7 @@ Do **not** subscribe CamCore resolvers directly to the upstream HaGeZi source in
 
 ## Operating model
 
-CamCore deliberately keeps DNS filtering simple and controlled:
+CamCore deliberately keeps DNS filtering simple and controlled. This is the **minimal** CamCore DNS filtering baseline: one approved upstream source, one published production feed and only evidenced local exceptions.
 
 1. **One approved upstream baseline** — HaGeZi Multi NORMAL.
 2. **One CamCore production URL** — `blocklist.txt` in this repository.
