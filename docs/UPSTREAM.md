@@ -48,6 +48,8 @@ The `upstream-hagezi` branch preserves the inherited upstream fork snapshot for 
 - an alternative source of truth for CamCore policy; or
 - a branch that should be merged into `main`.
 
+The `upstream-hagezi` branch **must not be merged into `main`**.
+
 CamCore policy references approved upstream content through `camcore/sources.json` instead of copying the upstream-generated repository tree into the default branch.
 
 ## Reviewing upstream changes
