@@ -2,10 +2,10 @@ blank_issues_enabled: false
 contact_links:
   - name: CamCore Support
     url: https://camcore.au/support.html
-    about: Report a CamCore DNS issue or request an approved operational change.
+    about: Report a CamCore DNS filtering issue, false positive or approved operational change request.
   - name: HaGeZi upstream project
     url: https://github.com/hagezi/dns-blocklists
-    about: Confirm and report defects in inherited HaGeZi list content upstream.
+    about: Confirm and report defects in the active HaGeZi upstream source material through the upstream project.
   - name: StevenBlack upstream project
     url: https://github.com/StevenBlack/hosts
-    about: Confirm and report defects in the approved baseline source upstream.
+    about: Reference the retired StevenBlack baseline or report a StevenBlack-specific upstream defect.
