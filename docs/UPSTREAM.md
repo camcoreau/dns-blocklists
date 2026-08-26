@@ -1,60 +1,113 @@
-# Upstream Governance and Attribution
+# CamCore DNS Upstream Governance
 
-## Origin
+## Purpose
 
-`camcoreau/dns-blocklists` originated as a GitHub fork of `hagezi/dns-blocklists`.
+This document defines how **CamCore – Cameron Family Secure Network** consumes, attributes and governs third-party DNS filtering sources.
 
-The inherited generated lists, source documentation, category definitions and original automation were created by HaGeZi and its contributors. CamCore retains the upstream `GPL-3.0` licence and does not claim authorship of that material.
+The production source of truth is [`camcore/sources.json`](../camcore/sources.json). Upstream content is never considered production-approved merely because it exists in this fork, appears on the provenance branch or is technically compatible with Pi-hole.
+
+## Repository origin
+
+`camcoreau/dns-blocklists` originated as a GitHub fork of [`hagezi/dns-blocklists`](https://github.com/hagezi/dns-blocklists).
+
+HaGeZi and its contributors retain authorship of their upstream generated lists, source documentation and other original material. CamCore retains the applicable upstream licence and does not claim authorship of HaGeZi content.
+
+## Current production relationship
+
+**HaGeZi Multi NORMAL is the approved upstream source material for the CamCore production DNS blocklist.**
+
+The production relationship is intentionally controlled:
+
+1. `camcore/sources.json` identifies the active production policy and approved upstream URL.
+2. The CamCore publisher downloads the approved HaGeZi Multi NORMAL domains feed over HTTPS.
+3. Upstream data is validated before processing.
+4. Domains in `camcore/allowlist.txt` are removed.
+5. Domains in `camcore/denylist.txt` are added.
+6. The result is normalised, deduplicated, sorted and validated.
+7. A successful build is published as the CamCore-owned `blocklist.txt` URL used by CamCore resolvers.
+8. A failed build leaves the last-known-good production feed untouched.
+
+CamCore resolvers therefore consume the **CamCore production URL**, not the upstream HaGeZi URL directly.
+
+Using HaGeZi as production source material does not mean:
+
+- CamCore claims authorship of HaGeZi entries;
+- CamCore independently verifies every upstream domain individually;
+- every HaGeZi list or category is approved for CamCore;
+- the full upstream repository is mirrored into CamCore production; or
+- upstream changes may bypass CamCore validation, staged deployment or change control.
 
 ## Branch separation
 
-The default `main` branch is the small CamCore-owned governance and curation layer.
+The default `main` branch contains the CamCore-owned governance, policy, tooling and published production feed.
 
-The `upstream-hagezi` branch preserves the original fork snapshot for provenance and controlled reference. It is not an approved list mirror, deployment branch or support channel.
+The `upstream-hagezi` branch preserves the inherited upstream fork snapshot for provenance and controlled reference. It is **not**:
 
-The archive branch must not be merged into `main`. CamCore policy should reference an upstream source through `camcore/sources.json` rather than copying the upstream-generated directory tree into the default branch.
+- a production deployment branch;
+- a list mirror intended for Pi-hole subscription;
+- an alternative source of truth for CamCore policy; or
+- a branch that should be merged into `main`.
 
-## CamCore use
+CamCore policy references approved upstream content through `camcore/sources.json` instead of copying the upstream-generated repository tree into the default branch.
 
-HaGeZi is currently an evaluation source only. Its presence in the manifest or archive branch does not mean:
+## Reviewing upstream changes
 
-- It is deployed on CamCore resolvers.
-- CamCore has independently verified every entry.
-- CamCore provides support for upstream list content.
-- Every category is suitable for the CamCore environment.
-- A larger list is preferred over the approved minimal baseline.
+Upstream changes should be consumed through the approved source pipeline rather than blindly synchronised into `main`.
 
-The current production source policy is defined only in `camcore/sources.json`.
+When reviewing an upstream change or refreshing provenance material:
 
-## Reviewing future upstream changes
+1. Review the relevant upstream commit range, source change or release notes.
+2. Confirm licence and attribution requirements remain satisfied.
+3. Keep inherited upstream repository automation out of `main`.
+4. Update `upstream-hagezi` only when a provenance refresh is intentionally required.
+5. Change `camcore/sources.json` only through a deliberate CamCore production-policy change.
+6. Run the CamCore validator and unit tests after policy or governance changes.
+7. Stage production-impacting changes on one resolver before wider rollout.
+8. Record significant production decisions in CamCore Operations.
 
-Upstream changes should be reviewed rather than blindly synchronised.
+An upstream source update becoming available does not by itself authorise a CamCore policy change.
 
-When refreshing the archive branch or evaluating a new upstream release:
+## Additional source evaluation
 
-1. Review the upstream commit range and release notes.
-2. Update only the `upstream-hagezi` branch for provenance work.
-3. Never merge inherited upstream workflows into `main`.
-4. Check licence and source-documentation changes.
-5. Reference the exact upstream version in any evaluation record.
-6. Keep HaGeZi in an evaluation state unless a separate production change is approved.
-7. Run the CamCore validator after any policy or documentation change.
-8. Record production-impacting decisions in CamCore Operations.
+Any additional third-party blocklist must remain outside production until separately reviewed and approved.
+
+Evaluation should consider:
+
+- unique coverage added beyond the current baseline;
+- false-positive risk;
+- Microsoft 365 and identity impact;
+- NetBird and private-service behaviour;
+- common household and media applications;
+- source maintenance quality and provenance;
+- licence compatibility;
+- update reliability; and
+- operational cost relative to the problem being solved.
+
+CamCore intentionally prefers a minimal, explainable filtering baseline over accumulating multiple overlapping lists.
+
+## Retired source
+
+[StevenBlack Unified Hosts](https://github.com/StevenBlack/hosts) is retained in `camcore/sources.json` as the previous CamCore production baseline.
+
+It is **retired** and must not be treated as an active production source unless a future reviewed change explicitly changes the manifest state.
 
 ## Inherited automation
 
-The original fork snapshot contains workflows intended for the upstream maintainer, including issue labelling, release creation, CDN purging and workflow cleanup.
+The upstream fork contains automation intended for the upstream maintainer, including workflows for release management, issue handling and repository maintenance.
 
-Those workflows are intentionally absent from `main`. They are not required to consume or evaluate upstream data and they grant broader write permissions than CamCore needs. The offline validator rejects their reintroduction to the default branch.
+Those workflows are intentionally absent from the CamCore `main` branch. CamCore keeps only the narrow automation required to validate policy, publish the approved production feed and check source health.
 
 ## Reporting upstream problems
 
-Confirm the issue and collect only non-sensitive evidence. Use the upstream project's published reporting process for:
+Confirm the issue and collect only non-sensitive evidence before reporting an upstream defect.
 
-- Incorrect upstream entries.
-- Missing upstream entries.
-- Source-quality concerns.
-- Format or generated-list defects.
-- Upstream documentation errors.
+Use the upstream project's published reporting process for:
 
-Keep CamCore-specific policy, deployment details and local exceptions in CamCore-owned files and private operational systems.
+- incorrect or missing upstream entries;
+- source-quality concerns;
+- generated-list or format defects; and
+- upstream documentation errors.
+
+Keep CamCore-specific policy, resolver deployment details, local exceptions and private operational evidence within CamCore-owned systems.
+
+See [`NOTICE.md`](../NOTICE.md) for attribution and licence notes.
