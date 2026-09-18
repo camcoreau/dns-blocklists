@@ -246,13 +246,21 @@ def _validate_action_pins(relative: Path, text: str) -> list[str]:
     return errors
 
 
-def validate_workflow_security(root: Path) -> list[str]:
+def _read_text_cache(text_cache: dict[Path, str] | None, path: Path) -> str:
+    if text_cache is None:
+        return path.read_text(encoding="utf-8")
+    if path not in text_cache:
+        text_cache[path] = path.read_text(encoding="utf-8")
+    return text_cache[path]
+
+
+def validate_workflow_security(root: Path, text_cache: dict[Path, str] | None = None) -> list[str]:
     errors: list[str] = []
     for relative in WORKFLOW_PATHS:
         path = root / relative
         if not path.is_file():
             continue
-        text = path.read_text(encoding="utf-8")
+        text = _read_text_cache(text_cache, path)
         if "pull_request_target:" in text or re.search(r"(?mi)^\s*permissions:\s*write-all\s*$", text):
             errors.append(f"{relative}: unsafe workflow trigger or write-all permission")
         if WRITE_PERMISSION_RE.search(text):
@@ -263,7 +271,7 @@ def validate_workflow_security(root: Path) -> list[str]:
 
     publish = root / PUBLISH_WORKFLOW
     if publish.is_file():
-        text = publish.read_text(encoding="utf-8")
+        text = _read_text_cache(text_cache, publish)
         if "pull_request:" in text or "pull_request_target:" in text:
             errors.append(f"{PUBLISH_WORKFLOW}: publisher must never run from pull-request events")
         if "permissions:\n  contents: write" not in text:
@@ -275,7 +283,7 @@ def validate_workflow_security(root: Path) -> list[str]:
     return errors
 
 
-def validate_required_content(root: Path) -> list[str]:
+def validate_required_content(root: Path, text_cache: dict[Path, str] | None = None) -> list[str]:
     errors = [f"Missing required file: {path}" for path in REQUIRED_FILES if not (root / path).is_file()]
     errors.extend(
         f"Forbidden upstream path on CamCore default branch: {path}"
@@ -295,13 +303,13 @@ def validate_required_content(root: Path) -> list[str]:
     for relative, phrases in phrase_checks.items():
         path = root / relative
         if path.is_file():
-            text = path.read_text(encoding="utf-8")
+            text = _read_text_cache(text_cache, path)
             for phrase in phrases:
                 if phrase not in text:
                     errors.append(f"{relative}: missing required phrase: {phrase!r}")
     licence = root / "LICENSE"
     if licence.is_file():
-        text = licence.read_text(encoding="utf-8")
+        text = _read_text_cache(text_cache, licence)
         if "GNU GENERAL PUBLIC LICENSE" not in text or "Version 3" not in text:
             errors.append("LICENSE: expected the GNU General Public License version 3")
     return errors
@@ -309,17 +317,27 @@ def validate_required_content(root: Path) -> list[str]:
 
 def repository_text_files(root: Path):
     for path in sorted(root.rglob("*")):
-        if path.is_file() and ".git" not in path.parts and "__pycache__" not in path.parts:
+        if (
+            path.is_file()
+            and ".git" not in path.parts
+            and ".pytest_cache" not in path.parts
+            and "__pycache__" not in path.parts
+        ):
             if path.suffix.lower() in TEXT_SUFFIXES or path.name in {"LICENSE", "CODEOWNERS"}:
                 yield path
 
 
-def validate_text_and_secrets(root: Path) -> list[str]:
+def validate_text_and_secrets(root: Path, text_cache: dict[Path, str] | None = None) -> list[str]:
     errors: list[str] = []
     for path in repository_text_files(root):
         raw = path.read_bytes()
         try:
-            text = raw.decode("utf-8")
+            if text_cache is not None and path in text_cache:
+                text = text_cache[path]
+            else:
+                text = raw.decode("utf-8")
+                if text_cache is not None:
+                    text_cache[path] = text
         except UnicodeDecodeError:
             errors.append(f"{path}: text file is not valid UTF-8")
             continue
@@ -341,7 +359,8 @@ def validate_text_and_secrets(root: Path) -> list[str]:
 
 
 def validate_repository(root: Path = REPO_ROOT) -> list[str]:
-    errors = validate_required_content(root)
+    text_cache: dict[Path, str] = {}
+    errors = validate_required_content(root, text_cache)
     errors.extend(validate_manifest(root / "camcore/sources.json"))
     allow, allow_errors = read_domain_entries(root / "camcore/allowlist.txt")
     deny, deny_errors = read_domain_entries(root / "camcore/denylist.txt")
@@ -351,8 +370,8 @@ def validate_repository(root: Path = REPO_ROOT) -> list[str]:
     for domain in deny:
         if any(domain == suffix or domain.endswith(f".{suffix}") for suffix in PROTECTED_SUFFIXES):
             errors.append(f"Protected namespace must not appear in local deny-list: {domain}")
-    errors.extend(validate_workflow_security(root))
-    errors.extend(validate_text_and_secrets(root))
+    errors.extend(validate_workflow_security(root, text_cache))
+    errors.extend(validate_text_and_secrets(root, text_cache))
     return errors
 
 
